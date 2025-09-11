@@ -7,7 +7,7 @@ import os
 
 # Page configuration
 st.set_page_config(
-    page_title="Multi-YOLO Object Detection",
+    page_title="AI-Snaily - Multi-YOLO Object Detection",
     page_icon="🔍",
     layout="wide"
 )
@@ -32,7 +32,7 @@ def get_available_models():
     return models
 
 def main():
-    st.title("🔍 Multi-YOLO Object Detection App")
+    st.title("🔍 AI-Snaily - Multi-YOLO Object Detection App")
     st.markdown("Support for YOLOv8, YOLOv10, and YOLOv11 models")
     
     # Sidebar for model configuration
