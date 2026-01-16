@@ -4,8 +4,6 @@ import numpy as np
 from ultralytics import YOLO
 from PIL import Image
 import os
-import time
-from collections import defaultdict
 
 # Page configuration
 st.set_page_config(
@@ -32,41 +30,6 @@ def get_available_models():
             models[model_name] = os.path.join(weights_dir, file)
     
     return models
-
-def generate_color_map(class_names):
-    """Generate unique colors for each class"""
-    colors = {}
-    color_palette = [
-        (255, 0, 0),      # Red
-        (0, 255, 0),      # Green
-        (0, 0, 255),      # Blue
-        (255, 255, 0),    # Yellow
-        (255, 0, 255),    # Magenta
-        (0, 255, 255),    # Cyan
-        (128, 0, 0),      # Maroon
-        (0, 128, 0),      # Dark Green
-        (0, 0, 128),      # Dark Blue
-        (128, 128, 0),    # Olive
-        (128, 0, 128),    # Purple
-        (0, 128, 128),    # Teal
-        (255, 128, 0),    # Orange
-        (255, 0, 128),    # Pink
-        (128, 255, 0),    # Lime
-    ]
-    for i, class_name in enumerate(class_names):
-        colors[class_name] = color_palette[i % len(color_palette)]
-    return colors
-
-def get_confidence_style(conf):
-    """Get visual style based on confidence level"""
-    if conf < 0.35:
-        return {'border_style': 'dashed', 'border_color': 'red', 'text_color': 'red', 'label': f'⚠ Low Conf: {conf:.2f}'}
-    elif conf < 0.60:
-        return {'border_style': 'dashed', 'border_color': 'red', 'text_color': 'red', 'label': ''}
-    elif conf < 0.85:
-        return {'border_style': 'dotted', 'border_color': 'yellow', 'text_color': 'orange', 'label': ''}
-    else:
-        return {'border_style': 'solid', 'border_color': 'green', 'text_color': 'green', 'label': f'✓ High Conf: {conf:.2f}'}
 
 def main():
     st.title("🔍 AI-Snaily - Multi-YOLO Object Detection App")
@@ -139,18 +102,13 @@ def handle_image_detection(model, confidence, iou_threshold):
         with col2:
             st.subheader("Detection Results")
             
-            # Run detection with timing
+            # Run detection
             with st.spinner("Running detection..."):
-                start_time = time.time()
                 results = model(image, conf=confidence, iou=iou_threshold)
-                inference_time = time.time() - start_time
             
             # Display results
             annotated_image = results[0].plot()
             st.image(annotated_image, use_container_width=True)
-            
-            # Display inference time
-            st.info(f"⏱️ Inference Time: {inference_time:.3f} seconds")
             
             # Display detection statistics
             detections = results[0].boxes
@@ -168,43 +126,6 @@ def handle_image_detection(model, confidence, iou_threshold):
                     st.write("**Detection Summary:**")
                     for class_name, count in class_counts.items():
                         st.write(f"- {class_name}: {count}")
-        
-        # Model Comparison Section
-        st.markdown("---")
-        st.subheader("📊 Model Comparison")
-        
-        available_models = get_available_models()
-        
-        if len(available_models) > 1:
-            comparison_data = []
-            comparison_cols = st.columns(len(available_models))
-            
-            for idx, (model_name, model_path) in enumerate(available_models.items()):
-                with st.spinner(f"Processing {model_name}..."):
-                    model_instance = load_model(model_path)
-                    start_time = time.time()
-                    results = model_instance(image, conf=confidence, iou=iou_threshold)
-                    inference_time = time.time() - start_time
-                    
-                    detections = results[0].boxes
-                    detection_count = len(detections) if detections is not None else 0
-                    
-                    comparison_data.append({
-                        'Model': model_name,
-                        'Detections': detection_count,
-                        'Inference Time (s)': f"{inference_time:.3f}"
-                    })
-                    
-                    with comparison_cols[idx]:
-                        st.write(f"**{model_name}**")
-                        annotated_img = results[0].plot()
-                        st.image(annotated_img, use_container_width=True)
-                        st.metric("Detections", detection_count)
-                        st.metric("Inference Time", f"{inference_time:.3f}s")
-            
-            # Display comparison table
-            st.write("### Comparison Summary")
-            st.table(comparison_data)
 
 def handle_video_detection(model, confidence, iou_threshold):
     """Handle video upload and detection"""
@@ -273,22 +194,16 @@ def process_video(model, video_path, confidence, iou_threshold):
     
     progress_bar = st.progress(0)
     frame_placeholder = st.empty()
-    stats_placeholder = st.empty()
     
     frame_count = 0
-    total_inference_time = 0
     
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
         
-        # Run detection with timing
-        start_time = time.time()
+        # Run detection
         results = model(frame, conf=confidence, iou=iou_threshold)
-        frame_inference_time = time.time() - start_time
-        total_inference_time += frame_inference_time
-        
         annotated_frame = results[0].plot()
         
         # Write frame
@@ -299,10 +214,6 @@ def process_video(model, video_path, confidence, iou_threshold):
         progress = frame_count / total_frames
         progress_bar.progress(progress)
         
-        # Display stats
-        avg_inference_time = total_inference_time / frame_count
-        stats_placeholder.info(f"⏱️ Avg Inference Time: {avg_inference_time:.3f}s | Frame: {frame_count}/{total_frames}")
-        
         # Display current frame (every 30th frame to avoid lag)
         if frame_count % 30 == 0:
             frame_placeholder.image(annotated_frame, channels="BGR", use_container_width=True)
@@ -310,7 +221,7 @@ def process_video(model, video_path, confidence, iou_threshold):
     cap.release()
     out.release()
     
-    st.success(f"Video processing complete! Total inference time: {total_inference_time:.2f}s")
+    st.success("Video processing complete!")
     st.video("output_video.mp4")
 
 if __name__ == "__main__":
