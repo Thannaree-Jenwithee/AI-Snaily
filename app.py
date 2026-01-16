@@ -191,8 +191,8 @@ def render_detections_with_custom_style(image, results, model):
         bg_rect_pt2 = (x1 + text_size[0] + 6, label_y + 6)
         cv2.rectangle(image_cv, bg_rect_pt1, bg_rect_pt2, style['color'], -1)
         
-        # Draw text with clean white color on colored background
-        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (255, 255, 255), font_thickness)
+        # Draw text with black color on colored background
+        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (0, 0, 0), font_thickness)
     
     return image_cv
 
