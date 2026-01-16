@@ -23,31 +23,31 @@ def get_confidence_style(conf):
     """Get visual style based on confidence level"""
     if conf < 0.35:
         return {
-            'border_style': 'dashed',
-            'border_color': 'red',
-            'text_color': 'red',
-            'label': f'⚠ Low Conf: {conf:.2f}'
+            'color': (0, 0, 255),      # Red in BGR
+            'thickness': 2,
+            'line_type': 'dashed',
+            'label': f'Low {conf:.2f}'
         }
     elif conf < 0.60:
         return {
-            'border_style': 'dashed',
-            'border_color': 'red',
-            'text_color': 'red',
-            'label': ''
+            'color': (0, 0, 255),      # Red in BGR
+            'thickness': 2,
+            'line_type': 'dashed',
+            'label': f'Low {conf:.2f}'
         }
     elif conf < 0.85:
         return {
-            'border_style': 'dotted',
-            'border_color': 'yellow',
-            'text_color': 'orange',
-            'label': ''
+            'color': (0, 255, 255),    # Yellow in BGR
+            'thickness': 2,
+            'line_type': 'dotted',
+            'label': f'Mid {conf:.2f}'
         }
     else:
         return {
-            'border_style': 'solid',
-            'border_color': 'green',
-            'text_color': 'green',
-            'label': f'✓ High Conf: {conf:.2f}'
+            'color': (0, 255, 0),      # Green in BGR
+            'thickness': 2,
+            'line_type': 'solid',
+            'label': f'High {conf:.2f}'
         }
 
 def generate_color_map(class_names):
@@ -73,6 +73,114 @@ def generate_color_map(class_names):
     for i, class_name in enumerate(class_names):
         colors[class_name] = color_palette[i % len(color_palette)]
     return colors
+
+def draw_dashed_rectangle(image, pt1, pt2, color, thickness=2):
+    """Draw dashed rectangle on image"""
+    x1, y1 = pt1
+    x2, y2 = pt2
+    dash_length = 10
+    gap_length = 5
+    
+    # Top line
+    for x in range(x1, x2, dash_length + gap_length):
+        end_x = min(x + dash_length, x2)
+        cv2.line(image, (x, y1), (end_x, y1), color, thickness)
+    
+    # Bottom line
+    for x in range(x1, x2, dash_length + gap_length):
+        end_x = min(x + dash_length, x2)
+        cv2.line(image, (x, y2), (end_x, y2), color, thickness)
+    
+    # Left line
+    for y in range(y1, y2, dash_length + gap_length):
+        end_y = min(y + dash_length, y2)
+        cv2.line(image, (x1, y), (x1, end_y), color, thickness)
+    
+    # Right line
+    for y in range(y1, y2, dash_length + gap_length):
+        end_y = min(y + dash_length, y2)
+        cv2.line(image, (x2, y), (x2, end_y), color, thickness)
+
+def draw_dotted_rectangle(image, pt1, pt2, color, thickness=2):
+    """Draw dotted rectangle on image"""
+    x1, y1 = pt1
+    x2, y2 = pt2
+    dot_spacing = 5
+    
+    # Top line
+    for x in range(x1, x2, dot_spacing):
+        cv2.circle(image, (x, y1), thickness, color, -1)
+    
+    # Bottom line
+    for x in range(x1, x2, dot_spacing):
+        cv2.circle(image, (x, y2), thickness, color, -1)
+    
+    # Left line
+    for y in range(y1, y2, dot_spacing):
+        cv2.circle(image, (x1, y), thickness, color, -1)
+    
+    # Right line
+    for y in range(y1, y2, dot_spacing):
+        cv2.circle(image, (x2, y), thickness, color, -1)
+
+def draw_rectangle(image, pt1, pt2, color, thickness=2, line_type='solid'):
+    """Draw rectangle with specified line type"""
+    if line_type == 'dashed':
+        draw_dashed_rectangle(image, pt1, pt2, color, thickness)
+    elif line_type == 'dotted':
+        draw_dotted_rectangle(image, pt1, pt2, color, thickness)
+    else:  # solid
+        cv2.rectangle(image, pt1, pt2, color, thickness)
+
+def render_detections_with_custom_style(image, results, model):
+    """Render detections with custom confidence-based styling for YOLOv5"""
+    # Convert PIL to OpenCV format if needed
+    if isinstance(image, Image.Image):
+        image_cv = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    else:
+        image_cv = image.copy()
+    
+    # Get detections
+    detections = results.xyxy[0]  # YOLOv5 format
+    if len(detections) == 0:
+        return image_cv
+    
+    class_names = results.names
+    
+    # Draw each detection
+    for det in detections:
+        x1, y1, x2, y2 = int(det[0]), int(det[1]), int(det[2]), int(det[3])
+        confidence = float(det[4])
+        class_id = int(det[5])
+        class_name = str(class_names[class_id]).capitalize()
+        
+        # Get style for this confidence level
+        style = get_confidence_style(confidence)
+        
+        # Draw rectangle with appropriate style
+        draw_rectangle(image_cv, (x1, y1), (x2, y2), style['color'], style['thickness'], style['line_type'])
+        
+        # Always draw label with class name and confidence
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.39
+        font_thickness = 1
+        
+        # Label shows class name and confidence value
+        label = f"{class_name}: {confidence:.2f}"
+        
+        # Get text size
+        text_size = cv2.getTextSize(label, font, font_scale, font_thickness)[0]
+        
+        # Draw background rectangle for label with white background
+        label_y = y1 - 10 if y1 > 30 else y2 + 25
+        bg_rect_pt1 = (x1 - 2, label_y - text_size[1] - 6)
+        bg_rect_pt2 = (x1 + text_size[0] + 6, label_y + 6)
+        cv2.rectangle(image_cv, bg_rect_pt1, bg_rect_pt2, (255, 255, 255), -1)
+        
+        # Draw text with black color on white background
+        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (0, 0, 0), font_thickness)
+    
+    return image_cv
 
 def main():
     st.title("🔍 AI-Snaily - YOLOv5 Object Detection")
@@ -142,8 +250,8 @@ def handle_image_detection(model, confidence, iou_threshold):
                 results = model(image, conf=confidence, iou_threshold=iou_threshold)
                 inference_time = time.time() - start_time
             
-            # Display results
-            annotated_image = results.render()[0]
+            # Display results with custom styling
+            annotated_image = render_detections_with_custom_style(image, results, model)
             st.image(annotated_image, use_container_width=True, channels="BGR")
             
             # Display inference time
@@ -160,29 +268,34 @@ def handle_image_detection(model, confidence, iou_threshold):
                 
                 for det in detections:
                     class_id = int(det[5])
-                    class_name = class_names[class_id]
+                    class_name = str(class_names[class_id]).capitalize()
                     class_counts[class_name] = class_counts.get(class_name, 0) + 1
                 
-                st.write("**Detection Summary:**")
-                for class_name, count in class_counts.items():
+                # Display summary in nice format
+                summary_text = ", ".join([f"{count} {class_name}" for class_name, count in sorted(class_counts.items())])
+                st.write(f"**Found:** {summary_text}")
+                
+                # Detailed breakdown
+                st.write("**Class Details:**")
+                for class_name, count in sorted(class_counts.items()):
                     st.write(f"- {class_name}: {count}")
                 
                 # Display confidence distribution
                 st.write("**Confidence Levels:**")
-                confidences = detections[:, 4].cpu().numpy()
+                confidences = detections[:, 4].numpy()
                 low_conf = sum(1 for c in confidences if c < 0.35)
-                mid_conf = sum(1 for c in confidences if 0.35 <= c < 0.60)
-                high_conf = sum(1 for c in confidences if 0.60 <= c < 0.85)
-                very_high_conf = sum(1 for c in confidences if c >= 0.85)
+                mid_low_conf = sum(1 for c in confidences if 0.35 <= c < 0.60)
+                mid_high_conf = sum(1 for c in confidences if 0.60 <= c < 0.85)
+                high_conf = sum(1 for c in confidences if c >= 0.85)
                 
                 if low_conf > 0:
-                    st.write(f"- ⚠️ Low (<0.35): {low_conf}")
-                if mid_conf > 0:
-                    st.write(f"- 🔶 Intermediate (0.35-0.60): {mid_conf}")
+                    st.write(f"- VLow (<0.35): {low_conf}")
+                if mid_low_conf > 0:
+                    st.write(f"- Low (0.35-0.60): {mid_low_conf}")
+                if mid_high_conf > 0:
+                    st.write(f"- Mid (0.60-0.85): {mid_high_conf}")
                 if high_conf > 0:
-                    st.write(f"- 🟡 Good (0.60-0.85): {high_conf}")
-                if very_high_conf > 0:
-                    st.write(f"- ✅ Very High (>0.85): {very_high_conf}")
+                    st.write(f"- High (>0.85): {high_conf}")
             else:
                 st.write("**No objects detected**")
 
@@ -269,7 +382,8 @@ def process_video(model, video_path, confidence, iou_threshold):
         frame_inference_time = time.time() - start_time
         total_inference_time += frame_inference_time
         
-        annotated_frame = results.render()[0]
+        # Render with custom styling
+        annotated_frame = render_detections_with_custom_style(frame, results, model)
         
         # Write frame
         out.write(annotated_frame)
