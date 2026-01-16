@@ -30,7 +30,19 @@ def get_available_models():
             model_name = file.replace('.pt', '')
             models[model_name] = os.path.join(weights_dir, file)
     
-    return models
+    # Sort models numerically (v8, v10, v11 instead of v8, v11, v10)
+    sorted_models = {}
+    def sort_key(item):
+        key = item[0]
+        # Extract numeric part from model name (e.g., "8" from "v8")
+        import re
+        match = re.search(r'\d+', key)
+        return int(match.group()) if match else float('inf')
+    
+    for key, value in sorted(models.items(), key=sort_key):
+        sorted_models[key] = value
+    
+    return sorted_models
 
 def get_confidence_style(conf):
     """Get visual style based on confidence level"""
@@ -157,25 +169,31 @@ def render_detections_with_custom_style(image, results, model):
         # Draw rectangle with appropriate style
         draw_rectangle(image_cv, (x1, y1), (x2, y2), style['color'], style['thickness'], style['line_type'])
         
-        # Draw label if specified
+        # Always draw label with class name
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.56
+        font_thickness = 2
+        
+        # Create label with class name and confidence info
         if style['label']:
-            label = style['label']
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.7
-            font_thickness = 2
-            
-            # Get text size
-            text_size = cv2.getTextSize(label, font, font_scale, font_thickness)[0]
-            
-            # Draw background rectangle for label
-            label_y = y1 - 10 if y1 > 30 else y2 + 25
-            cv2.rectangle(image_cv, (x1, label_y - text_size[1] - 5), 
-                         (x1 + text_size[0] + 5, label_y + 5), 
-                         style['color'], -1)
-            
-            # Draw label text
-            cv2.putText(image_cv, label, (x1 + 3, label_y), font, 
-                       font_scale, (255, 255, 255), font_thickness)
+            # For high/low confidence with special labels
+            label = f"{class_name} {style['label']}"
+        else:
+            # For intermediate confidence, just show class name and confidence
+            label = f"{class_name}: {confidence:.2f}"
+        
+        # Get text size
+        text_size = cv2.getTextSize(label, font, font_scale, font_thickness)[0]
+        
+        # Draw background rectangle for label
+        label_y = y1 - 10 if y1 > 30 else y2 + 25
+        cv2.rectangle(image_cv, (x1, label_y - text_size[1] - 5), 
+                     (x1 + text_size[0] + 5, label_y + 5), 
+                     style['color'], -1)
+        
+        # Draw label text
+        cv2.putText(image_cv, label, (x1 + 3, label_y), font, 
+                   font_scale, (255, 255, 255), font_thickness)
     
     return image_cv
 
