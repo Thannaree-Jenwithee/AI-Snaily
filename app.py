@@ -347,6 +347,40 @@ def handle_image_detection(model, confidence, iou_threshold):
                         st.image(annotated_img, use_container_width=True, channels="BGR")
                         st.metric("Detections", detection_count)
                         st.metric("Inference Time", f"{inference_time:.3f}s")
+                        
+                        # Display statistics for this model
+                        if detection_count > 0:
+                            # Class counts
+                            if hasattr(detections, 'cls'):
+                                classes = detections.cls.cpu().numpy()
+                                class_names_list = [str(model_instance.names[int(cls)]).capitalize() for cls in classes]
+                                class_counts = {}
+                                for name in class_names_list:
+                                    class_counts[name] = class_counts.get(name, 0) + 1
+                                
+                                # Display summary
+                                summary_text = ", ".join([f"{count} {class_name}" for class_name, count in sorted(class_counts.items())])
+                                st.write(f"**Found:** {summary_text}")
+                                
+                                # Confidence distribution
+                                confidences = detections.conf.cpu().numpy()
+                                low_conf = sum(1 for c in confidences if c < 0.35)
+                                mid_low_conf = sum(1 for c in confidences if 0.35 <= c < 0.60)
+                                mid_high_conf = sum(1 for c in confidences if 0.60 <= c < 0.85)
+                                high_conf = sum(1 for c in confidences if c >= 0.85)
+                                
+                                conf_text = []
+                                if low_conf > 0:
+                                    conf_text.append(f"VLow: {low_conf}")
+                                if mid_low_conf > 0:
+                                    conf_text.append(f"Low: {mid_low_conf}")
+                                if mid_high_conf > 0:
+                                    conf_text.append(f"Mid: {mid_high_conf}")
+                                if high_conf > 0:
+                                    conf_text.append(f"High: {high_conf}")
+                                
+                                if conf_text:
+                                    st.write(f"**Confidence:** {' | '.join(conf_text)}")
             
             # Display comparison table
             st.write("### Comparison Summary")
