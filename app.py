@@ -51,7 +51,7 @@ def get_confidence_style(conf):
             'color': (0, 0, 255),      # Red in BGR
             'thickness': 2,
             'line_type': 'dashed',
-            'label': f'⚠ Low Conf: {conf:.2f}',
+            'label': f'⚠ {conf:.2f}',
             'label_color': (0, 0, 255)  # Red text
         }
     elif conf < 0.60:
@@ -75,7 +75,7 @@ def get_confidence_style(conf):
             'color': (0, 255, 0),      # Green in BGR
             'thickness': 2,
             'line_type': 'solid',
-            'label': f'✓ High Conf: {conf:.2f}',
+            'label': f'✓ {conf:.2f}',
             'label_color': (0, 255, 0)  # Green text
         }
 
@@ -161,7 +161,7 @@ def render_detections_with_custom_style(image, results, model):
         x1, y1, x2, y2 = map(int, xyxy[i])
         confidence = float(conf[i])
         class_id = int(cls[i])
-        class_name = str(class_names[class_id])  # Ensure it's a string with proper encoding
+        class_name = str(class_names[class_id]).capitalize()  # Capitalize first letter
         
         # Get style for this confidence level
         style = get_confidence_style(confidence)
@@ -191,10 +191,7 @@ def render_detections_with_custom_style(image, results, model):
         bg_rect_pt2 = (x1 + text_size[0] + 6, label_y + 6)
         cv2.rectangle(image_cv, bg_rect_pt1, bg_rect_pt2, style['color'], -1)
         
-        # Draw text with outline for better contrast
-        # Outline
-        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (0, 0, 0), 3)
-        # Main text
+        # Draw text with clean white color on colored background
         cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (255, 255, 255), font_thickness)
     
     return image_cv
@@ -291,13 +288,18 @@ def handle_image_detection(model, confidence, iou_threshold):
                 # Class counts
                 if hasattr(detections, 'cls'):
                     classes = detections.cls.cpu().numpy()
-                    class_names = [model.names[int(cls)] for cls in classes]
+                    class_names_list = [str(model.names[int(cls)]).capitalize() for cls in classes]
                     class_counts = {}
-                    for name in class_names:
+                    for name in class_names_list:
                         class_counts[name] = class_counts.get(name, 0) + 1
                     
-                    st.write("**Detection Summary:**")
-                    for class_name, count in class_counts.items():
+                    # Display summary in nice format
+                    summary_text = ", ".join([f"{count} {class_name}" for class_name, count in sorted(class_counts.items())])
+                    st.write(f"**Found:** {summary_text}")
+                    
+                    # Detailed breakdown
+                    st.write("**Class Details:**")
+                    for class_name, count in sorted(class_counts.items()):
                         st.write(f"- {class_name}: {count}")
                 
                 # Display confidence distribution
