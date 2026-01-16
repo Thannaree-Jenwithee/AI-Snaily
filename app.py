@@ -196,7 +196,6 @@ def render_detections_with_custom_style(image, results, model):
         cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (0, 0, 0), 3)
         # Main text
         cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (255, 255, 255), font_thickness)
-                   font_scale, (255, 255, 255), font_thickness)
     
     return image_cv
 
