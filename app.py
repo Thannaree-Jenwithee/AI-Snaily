@@ -51,7 +51,7 @@ def get_confidence_style(conf):
             'color': (0, 0, 255),      # Red in BGR
             'thickness': 2,
             'line_type': 'dashed',
-            'label': f'⚠ {conf:.2f}',
+            'label': f'Low {conf:.2f}',
             'label_color': (0, 0, 255)  # Red text
         }
     elif conf < 0.60:
@@ -59,7 +59,7 @@ def get_confidence_style(conf):
             'color': (0, 0, 255),      # Red in BGR
             'thickness': 2,
             'line_type': 'dashed',
-            'label': '',
+            'label': f'Low {conf:.2f}',
             'label_color': (0, 0, 255)
         }
     elif conf < 0.85:
@@ -67,7 +67,7 @@ def get_confidence_style(conf):
             'color': (0, 255, 255),    # Yellow in BGR
             'thickness': 2,
             'line_type': 'dotted',
-            'label': '',
+            'label': f'Mid {conf:.2f}',
             'label_color': (0, 165, 255)  # Orange text
         }
     else:
@@ -75,7 +75,7 @@ def get_confidence_style(conf):
             'color': (0, 255, 0),      # Green in BGR
             'thickness': 2,
             'line_type': 'solid',
-            'label': f'✓ {conf:.2f}',
+            'label': f'High {conf:.2f}',
             'label_color': (0, 255, 0)  # Green text
         }
 
