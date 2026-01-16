@@ -161,7 +161,7 @@ def render_detections_with_custom_style(image, results, model):
         x1, y1, x2, y2 = map(int, xyxy[i])
         confidence = float(conf[i])
         class_id = int(cls[i])
-        class_name = class_names[class_id]
+        class_name = str(class_names[class_id])  # Ensure it's a string with proper encoding
         
         # Get style for this confidence level
         style = get_confidence_style(confidence)
@@ -171,8 +171,8 @@ def render_detections_with_custom_style(image, results, model):
         
         # Always draw label with class name
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.56
-        font_thickness = 2
+        font_scale = 0.39  # 30% smaller than 0.56
+        font_thickness = 1
         
         # Create label with class name and confidence info
         if style['label']:
@@ -185,14 +185,17 @@ def render_detections_with_custom_style(image, results, model):
         # Get text size
         text_size = cv2.getTextSize(label, font, font_scale, font_thickness)[0]
         
-        # Draw background rectangle for label
+        # Draw background rectangle for label with some padding
         label_y = y1 - 10 if y1 > 30 else y2 + 25
-        cv2.rectangle(image_cv, (x1, label_y - text_size[1] - 5), 
-                     (x1 + text_size[0] + 5, label_y + 5), 
-                     style['color'], -1)
+        bg_rect_pt1 = (x1 - 2, label_y - text_size[1] - 6)
+        bg_rect_pt2 = (x1 + text_size[0] + 6, label_y + 6)
+        cv2.rectangle(image_cv, bg_rect_pt1, bg_rect_pt2, style['color'], -1)
         
-        # Draw label text
-        cv2.putText(image_cv, label, (x1 + 3, label_y), font, 
+        # Draw text with outline for better contrast
+        # Outline
+        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (0, 0, 0), 3)
+        # Main text
+        cv2.putText(image_cv, label, (x1 + 2, label_y), font, font_scale, (255, 255, 255), font_thickness)
                    font_scale, (255, 255, 255), font_thickness)
     
     return image_cv
